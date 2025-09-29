@@ -1,0 +1,57 @@
+# Unity - Git Attributes
+
+# Normalize text files to LF in repo, convert to CRLF on Windows
+* text=auto
+
+# C# and shader scripts (text)
+*.cs     text diff=csharp
+*.shader text
+*.compute text
+*.cginc  text
+*.hlsl   text
+*.glsl   text
+
+# Unity scene & prefab files (YAML text, merge with Unity's Smart Merge / UnityYAMLMerge)
+*.unity   text merge=unityyamlmerge eol=lf
+*.prefab  text merge=unityyamlmerge eol=lf
+*.asset   text merge=unityyamlmerge eol=lf
+*.mat     text merge=unityyamlmerge eol=lf
+*.anim    text merge=unityyamlmerge eol=lf
+*.controller text merge=unityyamlmerge eol=lf
+*.overrideController text merge=unityyamlmerge eol=lf
+*.mask    text merge=unityyamlmerge eol=lf
+
+# Text-based project settings
+ProjectSettings/*.asset  text eol=lf
+ProjectSettings/*.txt    text eol=lf
+ProjectSettings/*.json   text eol=lf
+
+# Binary files
+*.dll     binary
+*.exe     binary
+*.pdb     binary
+*.so      binary
+*.dylib   binary
+*.a       binary
+*.lib     binary
+
+# Unity asset binaries
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.tga     binary
+*.psd     binary
+*.tif     binary
+*.tiff    binary
+*.mp3     binary
+*.ogg     binary
+*.wav     binary
+*.fbx     binary
+*.obj     binary
+*.blend   binary
+*.mp4     binary
+*.mov     binary
+
+# Ignore crash reports and logs
+*.stacktrace text eol=lf
+*.log        text eol=lf
