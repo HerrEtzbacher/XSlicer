@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class SongBehaviour : MonoBehaviour
 {
+    public FastAPIClient aPIClient;
     [SerializeField]
     private string songName;
     [SerializeField]
@@ -12,6 +13,7 @@ public class SongBehaviour : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        aPIClient.ProcessSong("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
         timeCount = 0;
     }
 
