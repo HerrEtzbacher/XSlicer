@@ -2,9 +2,11 @@ using UnityEngine;
 
 public class SongBehaviour : MonoBehaviour
 {
-    public FastAPIClient aPIClient;
+    private FastAPIClient aPIClient;
+
     [SerializeField]
     private string songName;
+
     [SerializeField]
     private int bpm;
     [SerializeField]
