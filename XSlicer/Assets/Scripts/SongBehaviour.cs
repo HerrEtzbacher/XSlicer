@@ -24,7 +24,8 @@ public class SongBehaviour : MonoBehaviour
                 Debug.LogError("Failed to process song.");
                 return;
             }
-            
+
+            Debug.Log(songData.rhythm_analysis.tempo_bpm);
             StartCoroutine(DownloadAndCacheSong(songData));
 
             Debug.Log($"New song ready: {songData.title}, ID: {songData.id}");
