@@ -20,12 +20,12 @@ public class FastAPIClient : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    public void ProcessSong(string youtubeLink)
+    public void ProcessSong(string youtubeLink, System.Action<SongData> onComplete)
     {
-        StartCoroutine(ProcessSongCoroutine(youtubeLink));
+        StartCoroutine(ProcessSongCoroutine(youtubeLink, onComplete));
     }
 
-    private IEnumerator ProcessSongCoroutine(string link)
+    private IEnumerator ProcessSongCoroutine(string link, System.Action<SongData> onComplete)
     {
         string url = $"{baseUrl}/process_link?link={UnityWebRequest.EscapeURL(link)}";
         UnityWebRequest request = UnityWebRequest.PostWwwForm(url, "");
@@ -36,10 +36,17 @@ public class FastAPIClient : MonoBehaviour
             request.result == UnityWebRequest.Result.ProtocolError)
         {
             Debug.LogError($"[FastAPIClient] ProcessSong error: {request.error}");
+            onComplete?.Invoke(null);
         }
         else
         {
-            Debug.Log($"[FastAPIClient] Song processed: {request.downloadHandler.text}");
+            string json = request.downloadHandler.text;
+            ProcessSongResponse response = JsonUtility.FromJson<ProcessSongResponse>(json);
+
+            Debug.Log($"[FastAPIClient] {response.message}");
+            Debug.Log($"[FastAPIClient] New song ID: {response.metadata.id}");
+
+            onComplete?.Invoke(response.metadata);
         }
     }
 
@@ -122,4 +129,12 @@ public class FastAPIClient : MonoBehaviour
             onComplete?.Invoke(json);
         }
     }
+}
+
+[System.Serializable]
+public class ProcessSongResponse
+{
+    public string message;
+    public string metadata_path;
+    public SongData metadata;
 }
