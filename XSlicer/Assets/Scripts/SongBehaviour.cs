@@ -28,6 +28,7 @@ public class SongBehaviour : MonoBehaviour
     void Start()
     {
         Debug.Log("Test");
+        /*
         FastAPIClient.Instance.ProcessSong("https://www.youtube.com/watch?v=Zv8czIoAw5w", (songData) =>
         {
             if (songData == null)
@@ -44,6 +45,7 @@ public class SongBehaviour : MonoBehaviour
 
             StartCoroutine(InstantiateCube());
         }); 
+        */
     }
     
 
