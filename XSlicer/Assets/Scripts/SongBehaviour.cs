@@ -12,6 +12,9 @@ public class SongBehaviour : MonoBehaviour
     private float bpm;
 
     [SerializeField]
+    private List<Transform> speedyThings;
+
+    [SerializeField]
     private GameObject cube;
     private float timeCount;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -20,8 +23,19 @@ public class SongBehaviour : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(60/bpm);
-            Instantiate(cube, transform.position, Quaternion.identity);
+            yield return new WaitForSeconds(60 / bpm);
+            int randy = random.Next(0, speedyThings.Count + 1);
+            int randomRotation = random.Next(0, 360);
+            if (randy == speedyThings.Count)
+            {
+        
+                Instantiate(speedyThings[0], positions[0].position, Quaternion.identity);
+                Instantiate(speedyThings[1], positions[1].position, Quaternion.identity);
+            }
+            else
+            {
+                Instantiate(speedyThings[randy], positions[randy].position, Quaternion.identity);
+            }
         }
         
     }
