@@ -4,29 +4,24 @@ using UnityEngine;
 public class MeshSlicerScaffolding : MonoBehaviour
 {
     [SerializeField] private MeshFilter _meshFilter;
-    [SerializeField] private Transform _cutPlaneTransform;
-    [SerializeField] private Vector3 _origin;
-    [SerializeField] private Vector3 _normal;
     [SerializeField] private float minSliceSpeed = 0.01f;
     [SerializeField] private bool showDebugGizmos = true;
+    [SerializeField] private float separationDistance = 1f; 
 
+    private Transform _activeSwordTransform;
+    private Vector3 _origin;
+    private Vector3 _normal;
     private Vector3 _previousSwordPosition;
     private Vector3 _lastSwingDirection;
     private bool _hasBeenSliced = false;
     private bool _isSwordInside = false;
 
-    private void Start()
-    {
-        if (_cutPlaneTransform != null)
-            _previousSwordPosition = _cutPlaneTransform.position;
-    }
-
     private void Update()
     {
-        if (!_isSwordInside || _cutPlaneTransform == null) return;
+        if (!_isSwordInside || _activeSwordTransform == null) return;
 
-        Vector3 swordMovement = _cutPlaneTransform.position - _previousSwordPosition;
-        _previousSwordPosition = _cutPlaneTransform.position;
+        Vector3 swordMovement = _activeSwordTransform.position - _previousSwordPosition;
+        _previousSwordPosition = _activeSwordTransform.position;
 
         if (swordMovement.magnitude < minSliceSpeed)
             return;
@@ -34,13 +29,14 @@ public class MeshSlicerScaffolding : MonoBehaviour
         Vector3 swingDir = swordMovement.normalized;
         _lastSwingDirection = swingDir;
 
-        Vector3 planeNormal = Vector3.Cross(_cutPlaneTransform.up, swingDir);
-        if (Vector3.Dot(planeNormal, _cutPlaneTransform.forward) < 0)
+        Vector3 planeNormal = Vector3.Cross(_activeSwordTransform.up, swingDir);
+        
+        if (Vector3.Dot(planeNormal, _activeSwordTransform.forward) < 0)
             planeNormal = -planeNormal;
 
         if (planeNormal.sqrMagnitude < 1e-4f || float.IsNaN(planeNormal.x))
         {
-            planeNormal = Vector3.Cross(swordMovement, _cutPlaneTransform.right);
+            planeNormal = Vector3.Cross(swordMovement, _activeSwordTransform.right);
             if (planeNormal.sqrMagnitude < 1e-4f || float.IsNaN(planeNormal.x))
             {
                 Vector3 perpendicular = Vector3.Cross(swordMovement, Vector3.up);
@@ -51,7 +47,7 @@ public class MeshSlicerScaffolding : MonoBehaviour
         }
 
         _normal = planeNormal.normalized;
-        _origin = _cutPlaneTransform.position;
+        _origin = _activeSwordTransform.position;
     }
 
     private void SliceMesh()
@@ -79,9 +75,14 @@ public class MeshSlicerScaffolding : MonoBehaviour
         {
             Mesh mesh = meshes[i];
             GameObject part = new GameObject($"{gameObject.name}_part_{i}");
+            
             part.transform.position = _meshFilter.transform.position;
             part.transform.rotation = _meshFilter.transform.rotation;
             part.transform.localScale = _meshFilter.transform.lossyScale;
+
+            float directionMultiplier = (i == 0) ? 1f : -1f;
+            Vector3 separationOffset = _normal * directionMultiplier * separationDistance;
+            part.transform.position += separationOffset;
 
             var mf = part.AddComponent<MeshFilter>();
             mf.sharedMesh = mesh;
@@ -94,7 +95,8 @@ public class MeshSlicerScaffolding : MonoBehaviour
             mc.convex = true;
 
             var rb = part.AddComponent<Rigidbody>();
-            rb.mass = 1f;
+            rb.useGravity = false;
+            rb.AddForce(_normal * directionMultiplier * 2f, ForceMode.Impulse);
         }
 
         Destroy(this.gameObject);
@@ -103,16 +105,25 @@ public class MeshSlicerScaffolding : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Sword")) return;
+        
+        if (_activeSwordTransform != null) return;
+
+        // Assign the active sword dynamically
+        _activeSwordTransform = other.transform;
+        _previousSwordPosition = _activeSwordTransform.position;
         _isSwordInside = true;
-        if (_cutPlaneTransform != null)
-            _previousSwordPosition = _cutPlaneTransform.position;
     }
 
     private void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Sword")) return;
+
+        if (other.transform != _activeSwordTransform) return;
+
         _isSwordInside = false;
         SliceMesh();
+        
+        _activeSwordTransform = null;
     }
 
     private void OnDrawGizmosSelected()
@@ -140,18 +151,18 @@ public class MeshSlicerScaffolding : MonoBehaviour
             Gizmos.DrawWireSphere(_origin + _lastSwingDirection * 2f, 0.05f);
         }
 
-        if (_cutPlaneTransform != null)
+        if (_activeSwordTransform != null)
         {
             Gizmos.color = Color.magenta;
-            Gizmos.DrawLine(_origin, _origin + _cutPlaneTransform.forward * 1.5f);
+            Gizmos.DrawLine(_origin, _origin + _activeSwordTransform.forward * 1.5f);
             Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(_cutPlaneTransform.position, 0.1f);
+            Gizmos.DrawWireSphere(_activeSwordTransform.position, 0.1f);
         }
 
         if (_meshFilter != null)
         {
             Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(_meshFilter.transform.position, 0.1f);
+            Gizmos.DrawWireSphere(_meshFilter.transform.position, 0.1f); 
         }
     }
 }
