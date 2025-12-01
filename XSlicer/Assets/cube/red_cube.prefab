@@ -73,6 +73,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b4fcc217f8c8f624ab7028fc16d343ba, type: 3}
       insertIndex: -1
       addedObject: {fileID: -4754739372194101418}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b4fcc217f8c8f624ab7028fc16d343ba, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6343306677308885695}
   m_SourcePrefab: {fileID: 100100000, guid: b4fcc217f8c8f624ab7028fc16d343ba, type: 3}
 --- !u!1 &1859317482768818723 stripped
 GameObject:
@@ -95,6 +98,7 @@ MonoBehaviour:
   minSliceSpeed: 0.01
   showDebugGizmos: 1
   separationDistance: 1
+  cubeScore: {fileID: 0}
 --- !u!65 &5190279635834234176
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -129,6 +133,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 500
+--- !u!114 &6343306677308885695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859317482768818723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 677db9641cfd38d4fbbae6a15f24c6d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointValue: 100
 --- !u!33 &4056898658017961202 stripped
 MeshFilter:
   m_CorrespondingSourceObject: {fileID: -5962755588348855424, guid: b4fcc217f8c8f624ab7028fc16d343ba, type: 3}

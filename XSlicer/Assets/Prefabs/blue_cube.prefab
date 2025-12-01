@@ -98,6 +98,7 @@ GameObject:
   - component: {fileID: -3974460360750085240}
   - component: {fileID: 4522193972645566555}
   - component: {fileID: 1627851332055897518}
+  - component: {fileID: 7068997232515844865}
   m_Layer: 0
   m_Name: blue_cube
   m_TagString: Untagged
@@ -151,6 +152,7 @@ MonoBehaviour:
   minSliceSpeed: 0.01
   showDebugGizmos: 1
   separationDistance: 0
+  cubeScore: {fileID: 0}
 --- !u!65 &1627851332055897518
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -172,6 +174,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2, y: 2, z: 2}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7068997232515844865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3863111672714060256}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 677db9641cfd38d4fbbae6a15f24c6d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointValue: 100
 --- !u!1 &4212733759205151687
 GameObject:
   m_ObjectHideFlags: 0
