@@ -2,9 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.LightTransport;
+using UnityEngine.Networking;
 
 
 
@@ -34,7 +37,8 @@ public class SongBehaviour : MonoBehaviour
 
     private bool isProcessing = true;
 
-    private AudioSource audioSource;
+    private AudioClip clip;
+    private AudioSource source;
     IEnumerator InstantiateCube()
     {
         while (videoLength > float.Parse(string.Format("{0:F2}", timeCount), CultureInfo.InvariantCulture.NumberFormat))
@@ -58,14 +62,58 @@ public class SongBehaviour : MonoBehaviour
         
     }
     
+    /*private IEnumerator LoadAudio(string filePath)
+    {
+        WWW request = GetAudioFromFile(filePath);
+        yield return request;
+        audioClip = request.GetAudioClip();
+        while(audioClip.loadState != AudioDataLoadState.Loaded)
+        {
+            yield return null;
+        }
+        clips.Add(audioClip);
+        Debug.Log("Audio Loaded: " + clips.Count + " clips available. " + audioClip.length + " seconds long.");
+    }
+
+    private WWW GetAudioFromFile(string filepath)
+    {
+        WWW request = new WWW(filepath);
+        return request;
+    }*/
+
+    IEnumerator GetAudioClip(string filePath)
+    {
+        using(UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(filePath, AudioType.MPEG))
+        {
+            yield return www.SendWebRequest();
+
+            if(www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
+            {
+                Debug.LogError(www.error);
+            }
+            else
+            {
+                clip = DownloadHandlerAudioClip.GetContent(www);
+                source.clip = clip;
+                source.Play();
+                Debug.Log(clip.length + " seconds long.");
+            }
+        }
+    }
     void Start()
     {
         StartCoroutine(Loading());
         random = new System.Random();
         Debug.Log("Test");
         
-        FastAPIClient.Instance.ProcessSong("https://www.youtube.com/watch?v=Zv8czIoAw5w", (songData) =>
+        FastAPIClient.Instance.ProcessSong("https://www.youtube.com/watch?v=lDK9QqIzhwk", (songData) =>
         {
+            FastAPIClient.Instance.DownloadSongFile(songData.id, (filePath) =>
+            {
+                source = gameObject.AddComponent<AudioSource>();
+                StartCoroutine(GetAudioClip(filePath));
+            });
+
             isProcessing = false;
             if (songData == null)
             {
