@@ -30,6 +30,9 @@ public class SongBehaviour : MonoBehaviour
 
     [SerializeField]
     private GameObject cube;
+
+    [SerializeField]
+    private string url;
     private float timeCount;
 
     private float videoLength;   
@@ -106,7 +109,7 @@ public class SongBehaviour : MonoBehaviour
         random = new System.Random();
         Debug.Log("Test");
         
-        FastAPIClient.Instance.ProcessSong("https://www.youtube.com/watch?v=lDK9QqIzhwk", (songData) =>
+        FastAPIClient.Instance.ProcessSong(url, (songData) =>
         {
             FastAPIClient.Instance.DownloadSongFile(songData.id, (filePath) =>
             {
