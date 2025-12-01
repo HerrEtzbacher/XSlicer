@@ -70,6 +70,9 @@ public class SongBehaviour : MonoBehaviour
             if (songData == null)
             {
                 Debug.LogError("Failed to process song.");
+                bpm = 100f; // Default BPM
+                videoLength = 180f; // Default length in seconds
+                StartCoroutine(InstantiateCube());
                 return;
             }
 
