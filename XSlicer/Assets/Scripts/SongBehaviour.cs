@@ -103,6 +103,10 @@ public class SongBehaviour : MonoBehaviour
             }
         }
     }
+    void Awake()
+    {
+        url = DataCarrier.url;
+    }
     void Start()
     {
         StartCoroutine(Loading());
