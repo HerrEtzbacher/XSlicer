@@ -50,6 +50,31 @@ public class FastAPIClient : MonoBehaviour
         }
     }
 
+    public void GetSongMetadataWithoutDownload(string link, System.Action<SongData> onComplete)
+    {
+        StartCoroutine(GetSongMetadataWithoutDownloadCoroutine(link, onComplete));
+    }
+    private IEnumerator GetSongMetadataWithoutDownloadCoroutine(string link, System.Action<SongData> onComplete)
+    {
+        string url = $"{baseUrl}/get_metadata?link={UnityWebRequest.EscapeURL(link)}";
+        UnityWebRequest request = UnityWebRequest.Get(url);
+
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.ConnectionError ||
+            request.result == UnityWebRequest.Result.ProtocolError)
+        {
+            Debug.LogError($"[FastAPIClient] GetSongMetadata error: {request.error}");
+        }
+        else
+        {
+            string json = request.downloadHandler.text;
+            ProcessSongResponse response = JsonUtility.FromJson<ProcessSongResponse>(json);
+            Debug.Log($"[FastAPIClient] Metadata received for {link}");
+            onComplete?.Invoke(response.metadata);
+        }
+    }
+
     public void GetSongMetadata(string songId, System.Action<string> onComplete = null)
     {
         StartCoroutine(GetSongMetadataCoroutine(songId, onComplete));
@@ -129,6 +154,36 @@ public class FastAPIClient : MonoBehaviour
             onComplete?.Invoke(json);
         }
     }
+    public void GetProxyThumbnail(string originalThumbnailUrl, System.Action<Texture2D> onComplete)
+    {
+        StartCoroutine(GetProxyThumbnailCoroutine(originalThumbnailUrl, onComplete));
+    }
+
+    private IEnumerator GetProxyThumbnailCoroutine(string originalUrl, System.Action<Texture2D> onComplete)
+    {
+        string fallbackUrl = originalUrl.Replace("/vi_webp/", "/vi/").Replace(".webp", ".jpg");
+        
+        string url = $"{baseUrl}/proxy_image?url={UnityWebRequest.EscapeURL(fallbackUrl)}";
+
+        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(url))
+        {
+            request.certificateHandler = new BypassCertificate(); 
+
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"[FastAPIClient] Proxy Image Error: {request.error} | URL: {url}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                Texture2D texture = ((DownloadHandlerTexture)request.downloadHandler).texture;
+                onComplete?.Invoke(texture);
+            }
+        }
+    }
+
 }
 
 [System.Serializable]

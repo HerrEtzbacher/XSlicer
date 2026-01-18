@@ -17,6 +17,7 @@ public class SongData
     public string artist;
     public int duration;
     public string upload_date;
+    public string? thumbnail_url;
     public string link;
     public string analyzed_at;
     public RhythmAnalysis rhythm_analysis;
