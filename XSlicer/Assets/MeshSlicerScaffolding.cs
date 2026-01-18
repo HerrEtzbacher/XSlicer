@@ -7,7 +7,6 @@ public class MeshSlicerScaffolding : MonoBehaviour
     [SerializeField] private float minSliceSpeed = 0.01f;
     [SerializeField] private bool showDebugGizmos = true;
     [SerializeField] private float separationDistance = 1f; 
-    [SerializeField] private CubeScore cubeScore;
 
     private Transform _activeSwordTransform;
     private Vector3 _origin;
@@ -19,10 +18,6 @@ public class MeshSlicerScaffolding : MonoBehaviour
 
     private void Awake()
     {
-        if (cubeScore == null)
-        {
-            cubeScore = GetComponent<CubeScore>();
-        }
     }
 
     private void Update()
@@ -65,7 +60,12 @@ public class MeshSlicerScaffolding : MonoBehaviour
         if (_normal.sqrMagnitude < 1e-6f) return;
 
         _hasBeenSliced = true;
-        cubeScore?.AwardPoints();
+        
+        ISliceEffect[] effects = GetComponents<ISliceEffect>();
+        foreach (var effect in effects)
+        {   
+            effect.OnSliced();
+        }
 
         Vector3 objectCenter = _meshFilter.transform.position;
         float distanceToCenter = Vector3.Dot(objectCenter - _origin, _normal);
@@ -118,7 +118,6 @@ public class MeshSlicerScaffolding : MonoBehaviour
         
         if (_activeSwordTransform != null) return;
 
-        // Assign the active sword dynamically
         _activeSwordTransform = other.transform;
         _previousSwordPosition = _activeSwordTransform.position;
         _isSwordInside = true;
@@ -175,4 +174,9 @@ public class MeshSlicerScaffolding : MonoBehaviour
             Gizmos.DrawWireSphere(_meshFilter.transform.position, 0.1f); 
         }
     }
+}
+
+public interface ISliceEffect
+{
+    void OnSliced();
 }
