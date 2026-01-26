@@ -20,6 +20,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SongChoicesSinglePlayer.unity
     guid: 3339b268c5c7701439c3464d0789205f
+  - enabled: 1
+    path: Assets/Scenes/ChooseModeScene.unity
+    guid: cba4aa1c0f72d2943b63ae69853afa8d
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: c872ebb38c96a954ca6549564e1aa398, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: e8b3f682a542ddb4a97a1a59ad268747, type: 2}

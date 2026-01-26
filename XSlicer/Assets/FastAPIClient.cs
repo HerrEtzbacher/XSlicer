@@ -28,25 +28,19 @@ public class FastAPIClient : MonoBehaviour
     private IEnumerator ProcessSongCoroutine(string link, System.Action<SongData> onComplete)
     {
         string url = $"{baseUrl}/process_link?link={UnityWebRequest.EscapeURL(link)}";
-        UnityWebRequest request = UnityWebRequest.PostWwwForm(url, "");
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.ConnectionError ||
-            request.result == UnityWebRequest.Result.ProtocolError)
+        using (UnityWebRequest request = UnityWebRequest.PostWwwForm(url, ""))
         {
-            Debug.LogError($"[FastAPIClient] ProcessSong error: {request.error}");
-            onComplete?.Invoke(null);
-        }
-        else
-        {
-            string json = request.downloadHandler.text;
-            ProcessSongResponse response = JsonUtility.FromJson<ProcessSongResponse>(json);
-
-            Debug.Log($"[FastAPIClient] {response.message}");
-            Debug.Log($"[FastAPIClient] New song ID: {response.metadata.id}");
-
-            onComplete?.Invoke(response.metadata);
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"Process Error: {request.error}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                ProcessSongResponse resp = JsonUtility.FromJson<ProcessSongResponse>(request.downloadHandler.text);
+                onComplete?.Invoke(resp.metadata);
+            }
         }
     }
 
@@ -100,33 +94,36 @@ public class FastAPIClient : MonoBehaviour
         }
     }
 
-    public void DownloadSongFile(string songId, System.Action<string> onComplete = null)
+    public void DownloadSongFile(string videoId, System.Action<string> onComplete)
     {
-        StartCoroutine(DownloadSongFileCoroutine(songId, onComplete));
+        // CLIENT-SIDE CACHE CHECK
+        string songDir = Path.Combine(Application.persistentDataPath, "Songs");
+        if (!Directory.Exists(songDir)) Directory.CreateDirectory(songDir);
+        
+        string localPath = Path.Combine(songDir, $"{videoId}.mp3");
+
+        if (File.Exists(localPath))
+        {
+            Debug.Log("[Cache] File already exists locally.");
+            onComplete?.Invoke(localPath);
+            return;
+        }
+
+        StartCoroutine(DownloadCoroutine(videoId, localPath, onComplete));
     }
 
-    private IEnumerator DownloadSongFileCoroutine(string songId, System.Action<string> onComplete)
+    private IEnumerator DownloadCoroutine(string videoId, string savePath, System.Action<string> onComplete)
     {
-        string url = $"{baseUrl}/songs/{songId}/file";
-        UnityWebRequest request = UnityWebRequest.Get(url);
-
-        string songDir = Path.Combine(Application.persistentDataPath, "Songs");
-        Directory.CreateDirectory(songDir);
-
-        string filePath = Path.Combine(songDir, $"{songId}.mp3");
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.ConnectionError ||
-            request.result == UnityWebRequest.Result.ProtocolError)
+        string url = $"{baseUrl}/songs/{videoId}/file";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
-            Debug.LogError($"[FastAPIClient] DownloadSongFile error: {request.error}");
-        }
-        else
-        {
-            File.WriteAllBytes(filePath, request.downloadHandler.data);
-            Debug.Log($"[FastAPIClient] Downloaded song to {filePath}");
-            onComplete?.Invoke(filePath);
+            yield return request.SendWebRequest();
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                File.WriteAllBytes(savePath, request.downloadHandler.data);
+                onComplete?.Invoke(savePath);
+            }
+            else { Debug.LogError("Download failed"); }
         }
     }
 

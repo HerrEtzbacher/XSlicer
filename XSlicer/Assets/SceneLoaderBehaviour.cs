@@ -1,3 +1,4 @@
+using Unity.Android.Gradle.Manifest;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems; 
@@ -13,13 +14,8 @@ public class SceneLoaderBehaviour : MonoBehaviour, IPointerClickHandler
         if (!string.IsNullOrEmpty(sceneToLoad))
         {
             Debug.Log("Clicked");
-            DataCarrier.url = url;
+            DataCarrier.Instance.url = url;
             SceneManager.LoadScene(sceneToLoad);
         }
     }
-}
-
-public static class DataCarrier 
-{
-    public static string url;
 }

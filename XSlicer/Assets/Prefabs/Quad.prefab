@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 6841277930915206243}
   - component: {fileID: 6819656478450458851}
   - component: {fileID: -2947857867450629305}
+  - component: {fileID: 4062617926654226441}
+  - component: {fileID: 4389853196198800287}
   m_Layer: 0
   m_Name: Quad
   m_TagString: Untagged
@@ -103,11 +105,11 @@ MeshCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 5
-  m_Convex: 0
+  m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!114 &-2947857867450629305
@@ -117,9 +119,40 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3025569449777378430}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1dac98720333f314aa2df42f37829585, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   sceneToLoad: Scenes/GameTestEnv
+  url: 
+--- !u!114 &4062617926654226441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3025569449777378430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a6a12870fb0de14792c6196fbd5dbc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _meshFilter: {fileID: 1655969439469341451}
+  minSliceSpeed: 0.01
+  showDebugGizmos: 1
+  separationDistance: 1
+--- !u!114 &4389853196198800287
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3025569449777378430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 270ef1e4a96bb4f40b40c760898bb769, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sceneName: GameTestEnv
+  url: 

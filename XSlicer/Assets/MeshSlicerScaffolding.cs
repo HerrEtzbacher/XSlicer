@@ -15,9 +15,16 @@ public class MeshSlicerScaffolding : MonoBehaviour
     private Vector3 _lastSwingDirection;
     private bool _hasBeenSliced = false;
     private bool _isSwordInside = false;
-
+    private ISliceEffect[] _sliceEffects;
+    
     private void Awake()
     {
+        if (_meshFilter == null)
+        {
+            _meshFilter = GetComponent<MeshFilter>();
+        }
+        
+        _sliceEffects = GetComponents<ISliceEffect>();
     }
 
     private void Update()
@@ -61,9 +68,9 @@ public class MeshSlicerScaffolding : MonoBehaviour
 
         _hasBeenSliced = true;
         
-        ISliceEffect[] effects = GetComponents<ISliceEffect>();
-        foreach (var effect in effects)
+        foreach (var effect in _sliceEffects)
         {   
+            Debug.Log("Calling OnSliced on " + effect.GetType().Name);
             effect.OnSliced();
         }
 

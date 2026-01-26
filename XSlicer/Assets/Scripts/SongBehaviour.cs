@@ -1,174 +1,166 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
+using System.Text;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.LightTransport;
 using UnityEngine.Networking;
-
-
 
 public class SongBehaviour : MonoBehaviour
 {
-
-    [SerializeField]
-    private string songName;
-
-    [SerializeField]
-    private float bpm;
-
-    [SerializeField]
-    private List<GameObject> speedyThings;
-
-    [SerializeField]
-    private List<Transform> positions;
+    [SerializeField] private string songName;
+    [SerializeField] private float bpm;
+    [SerializeField] private List<GameObject> speedyThings;
+    [SerializeField] private List<Transform> positions;
+    [SerializeField] private GameObject cube;
+    [SerializeField] private string url;
+    [SerializeField] private TextMeshPro scoreText;
+    [SerializeField] private string backendUrl;
 
     private System.Random random;
-
-    [SerializeField]
-    private GameObject cube;
-
-    [SerializeField]
-    private string url;
     private float timeCount;
-
-    private float videoLength;   
-    [SerializeField] TextMeshPro scoreText;
-
+    private float videoLength;
     private bool isProcessing = true;
-
     private AudioClip clip;
     private AudioSource source;
-    IEnumerator InstantiateCube()
+    private int waveCount = 0;
+    private int score = 0;
+
+    void Awake()
     {
-        while (videoLength > float.Parse(string.Format("{0:F2}", timeCount), CultureInfo.InvariantCulture.NumberFormat))
+        url = DataCarrier.Instance.url;
+    }
+
+    void Start()
+    {
+        StartCoroutine(Loading());
+        random = new System.Random();
+
+        FastAPIClient.Instance.ProcessSong(url, (songData) =>
         {
-            
-            yield return new WaitForSeconds(60 / bpm);
-            int randy = random.Next(0, speedyThings.Count + 1);
-            int randomRotation = random.Next(0, 360);
-            if (randy == speedyThings.Count)
+            if (songData == null) return;
+
+            bpm = songData.rhythm_analysis.tempo_bpm;
+            videoLength = songData.duration;
+
+            FastAPIClient.Instance.DownloadSongFile(songData.id, (filePath) =>
             {
+                isProcessing = false;
+                source = gameObject.AddComponent<AudioSource>();
+                StartCoroutine(GetAudioClip(filePath));
+                StartCoroutine(InstantiateWaves());
+            });
+        });
+    }
+    
+    
+
+    IEnumerator InstantiateWaves()
+    {
+        while (timeCount < videoLength)
+        {
+            waveCount++;
+            Debug.Log($"Starting wave {waveCount}");
+
+            for (int i = 0; i < positions.Count; i++)
+            {
+                Instantiate(speedyThings[random.Next(speedyThings.Count)], positions[i].position, Quaternion.identity);
+            }
+
+            yield return new WaitForSeconds(60 / bpm * positions.Count);
+            yield return StartCoroutine(SendScoreToBackend());
+
+            timeCount += 60 / bpm * positions.Count;
+        }
+    }
+
+    IEnumerator SendScoreToBackend()
+    {
+        GameStatData data = new GameStatData();
+        data.player_id = "PlayerOne"; 
+        data.score = score;
+        data.level = waveCount; 
+        data.time_played = Time.timeSinceLevelLoad; 
+
+        string jsonPayload = JsonUtility.ToJson(data);
+    
+        using (UnityWebRequest www = new UnityWebRequest(backendUrl, "POST"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
         
-                Instantiate(speedyThings[0], positions[0].position, Quaternion.identity);
-                Instantiate(speedyThings[1], positions[1].position, Quaternion.identity);
-                
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
+            {
+                Debug.LogError($"Error sending score: {www.error}");
+                Debug.LogError($"Response: {www.downloadHandler.text}");
             }
             else
             {
-                Instantiate(speedyThings[randy], positions[randy].position, Quaternion.identity);
+                Debug.Log("Score sent successfully!");
+                Debug.Log($"Response: {www.downloadHandler.text}");
             }
         }
-        
     }
-    
-    /*private IEnumerator LoadAudio(string filePath)
-    {
-        WWW request = GetAudioFromFile(filePath);
-        yield return request;
-        audioClip = request.GetAudioClip();
-        while(audioClip.loadState != AudioDataLoadState.Loaded)
-        {
-            yield return null;
-        }
-        clips.Add(audioClip);
-        Debug.Log("Audio Loaded: " + clips.Count + " clips available. " + audioClip.length + " seconds long.");
-    }
-
-    private WWW GetAudioFromFile(string filepath)
-    {
-        WWW request = new WWW(filepath);
-        return request;
-    }*/
 
     IEnumerator GetAudioClip(string filePath)
     {
-        using(UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(filePath, AudioType.MPEG))
+        string uri = "file://" + filePath;
+    
+        using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.MPEG))
         {
             yield return www.SendWebRequest();
 
-            if(www.result == UnityWebRequest.Result.ConnectionError || www.result == UnityWebRequest.Result.ProtocolError)
+            if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError(www.error);
+                Debug.LogError($"Audio Load Error: {www.error}");
             }
             else
             {
                 clip = DownloadHandlerAudioClip.GetContent(www);
                 source.clip = clip;
                 source.Play();
-                Debug.Log(clip.length + " seconds long.");
+                Debug.Log("Audio playing!");
             }
         }
     }
-    void Awake()
-    {
-        url = DataCarrier.url;
-    }
-    void Start()
-    {
-        StartCoroutine(Loading());
-        random = new System.Random();
-        Debug.Log("Test");
-        
-        FastAPIClient.Instance.ProcessSong(url, (songData) =>
-        {
-            FastAPIClient.Instance.DownloadSongFile(songData.id, (filePath) =>
-            {
-                source = gameObject.AddComponent<AudioSource>();
-                StartCoroutine(GetAudioClip(filePath));
-            });
-
-            isProcessing = false;
-            if (songData == null)
-            {
-                Debug.LogError("Failed to process song.");
-                bpm = 100f; // Default BPM
-                videoLength = 180f; // Default length in seconds
-                StartCoroutine(InstantiateCube());
-                return;
-            }
-
-            Debug.Log(songData.rhythm_analysis.tempo_bpm);
-
-            Debug.Log("Processed");
-
-            bpm = (float)songData.rhythm_analysis.tempo_bpm;
-            videoLength = (float)songData.duration;
-
-            Debug.Log("Beats per minute" + bpm);
-
-            StartCoroutine(InstantiateCube());
-        }); 
-    }
-    
 
     IEnumerator Loading()
     {
         while (isProcessing)
         {
-            scoreText.text = "Verarbeite Lied.";
+            scoreText.text = "Processing song.";
             yield return new WaitForSeconds(0.5f);
-            scoreText.text = "Verarbeite Lied..";
+            scoreText.text = "Processing song..";
             yield return new WaitForSeconds(0.5f);
-            scoreText.text = "Verarbeite Lied...";
+            scoreText.text = "Processing song...";
             yield return new WaitForSeconds(0.5f);
         }
-        
     }
-    // Update is called once per frame
+
     void Update()
-    {    
-       if(!isProcessing && timeCount < videoLength)
-       {
-           timeCount += Time.deltaTime / 100;
-            scoreText.text = "Zeit: " + float.Parse(string.Format("{0:F2}", timeCount), CultureInfo.InvariantCulture.NumberFormat) + " / " + float.Parse(string.Format("{0:F2}", videoLength), CultureInfo.InvariantCulture.NumberFormat)/100 ;
+    {
+        if (!isProcessing && timeCount < videoLength)
+        {
+            timeCount += Time.deltaTime / 100;
+            scoreText.text = $"Time: {timeCount:F2} / {videoLength:F2}";
         }
         else if (!isProcessing)
         {
-            scoreText.text = " LEVEL COMPLETE! (" + float.Parse(string.Format("{0:F2}", videoLength), CultureInfo.InvariantCulture.NumberFormat)/100 + "s) ";
+            scoreText.text = $"LEVEL COMPLETE! ({videoLength:F2}s)";
         }
     }
+}
+
+[System.Serializable]
+public class GameStatData
+{
+    public string player_id;
+    public int score;
+    public int level;
+    public float time_played;
 }

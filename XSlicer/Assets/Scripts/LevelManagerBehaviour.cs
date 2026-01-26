@@ -6,85 +6,48 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
+
 public class BypassCertificate : CertificateHandler
 {
     protected override bool ValidateCertificate(byte[] certificateData) => true;
 }
+
 public class Song
 {
     private string name;
     private string artist;
     private float length;
     private string thumbnail_url;
+    private string source_url;
 
-    //Fürs Caching
+    // For Caching
     public Texture2D CachedTexture;
 
-
-    public Song(string name, string artist, string thumbnail_url, float length)
+    public Song(string name, string artist, string thumbnail_url, float length, string source_url)
     {
         this.name = name;
         this.artist = artist;
         this.thumbnail_url = thumbnail_url;
         this.length = length;
+        this.source_url = source_url;
     }
-
-    //Without song download = efficient BUT no BPM available...
-    //With song download = inefficient BUT BPM available
-    /*
-    public string GetDifficultiy()
-    {
-        
-        if(bpm < 80)
-        {
-            return "Easy";
-        }
-        else if(bpm >= 80 && bpm < 140)
-        {
-            return "Medium";
-        }
-        else
-        {
-            return "Hard";
-        }
-        
-        
-    }
-    */
 
     public string GetStamina()
     {
-        if(length < 120)
-        {
-            return "Short";
-        }
-        else if(length >= 120 && length < 240)
-        {
-            return "Medium length";
-        }
-        else
-        {
-            return "Long";
-        }
+        if (length < 120) return "Short";
+        else if (length >= 120 && length < 240) return "Medium length";
+        else return "Long";
     }
 
-    public string GetName()
-    {
-        return name;
-    }
-    public string GetArtist()
-    {
-        return artist;
-    }
-    public string GetThumbnailURl()
-    {
-        return thumbnail_url;
-    }
+    public string GetName() => name;
+    public string GetArtist() => artist;
+    public string GetThumbnailURl() => thumbnail_url;
+    public string GetUrl() => source_url; // Getter for the URL
 }
 
 public class LevelManagerBehaviour : MonoBehaviour
 {
+    public static LevelManagerBehaviour Instance { get; private set; }
     private InputSystem_Actions inputActions;
 
     [SerializeField]
@@ -100,63 +63,72 @@ public class LevelManagerBehaviour : MonoBehaviour
 
     [SerializeField]
     private TextMeshPro theme;
-    [SerializeField] 
+    [SerializeField]
     private MeshRenderer imagePrefab;
-    void GetNext()
+
+    public LevelManagerBehaviour()
     {
+        Instance = this;
+    }
+
+    public void GetNext()
+    {
+        if (shownSongs.Count < 3) return;
+
         shownSongs[0] = shownSongs[1];
         shownSongs[1] = shownSongs[2];
         int index = songs.IndexOf(shownSongs[2]);
-        if(songs.Count - 1 == index)
+        if (songs.Count - 1 == index)
         {
             shownSongs[2] = songs[0];
         }
         else
         {
-            shownSongs[2] = songs[index + 1];    
+            shownSongs[2] = songs[index + 1];
         }
     }
-    void GetPrevious()
+
+    public void GetPrevious()
     {
+        if (shownSongs.Count < 3) return;
+
         shownSongs[2] = shownSongs[1];
         shownSongs[1] = shownSongs[0];
         int index = songs.IndexOf(shownSongs[0]);
-        if(index == 0)
+        if (index == 0)
         {
             shownSongs[0] = songs[songs.Count - 1];
         }
         else
         {
-            shownSongs[0] = songs[index - 1];    
+            shownSongs[0] = songs[index - 1];
         }
-    }   
+    }
+
     async Task Show()
     {
-        foreach (var obj in themes) Destroy(obj);
-            themes.Clear();
-        foreach (var obj in images) Destroy(obj);
-            images.Clear();
-        for(int i = 0; i < positions.Count; i++)
+        foreach (var obj in themes) if (obj != null) Destroy(obj);
+        themes.Clear();
+        foreach (var obj in images) if (obj != null) Destroy(obj);
+        images.Clear();
+
+        for (int i = 0; i < shownSongs.Count; i++)
         {
-            
+            // Start loading thumbnail and passing the specific song object
             StartCoroutine(LoadThumbnail(shownSongs[i], i));
 
-            theme.text = "Name: " + shownSongs[i].GetName();
-            var s = Instantiate(theme, positions[i].position, Quaternion.Euler(0,270,0));
-            s.text = "Name: " + shownSongs[i].GetName();
-            themes.Add(s.gameObject);
+            // Create Text Info
+            var sName = Instantiate(theme, positions[i].position, Quaternion.Euler(0, 270, 0));
+            sName.text = "Name: " + shownSongs[i].GetName();
+            themes.Add(sName.gameObject);
 
-            theme.text = "Artist: " + shownSongs[i].GetArtist();
-            s = Instantiate(theme, positions[i].position - new Vector3(0,0.2f,0), Quaternion.Euler(0,270,0));
-            s.text = "Artist: " + shownSongs[i].GetArtist();
-            themes.Add(s.gameObject);
-            
-            theme.text = "Dauer: " + shownSongs[i].GetStamina();
-            s = Instantiate(theme, positions[i].position - new Vector3(0,0.4f,0), Quaternion.Euler(0,270,0));
-            s.text = "Dauer: " + shownSongs[i].GetStamina();
-            themes.Add(s.gameObject);
+            var sArtist = Instantiate(theme, positions[i].position - new Vector3(0, 0.2f, 0), Quaternion.Euler(0, 270, 0));
+            sArtist.text = "Artist: " + shownSongs[i].GetArtist();
+            themes.Add(sArtist.gameObject);
 
-            
+            var sStamina = Instantiate(theme, positions[i].position - new Vector3(0, 0.4f, 0), Quaternion.Euler(0, 270, 0));
+            sStamina.text = "Dauer: " + shownSongs[i].GetStamina();
+            themes.Add(sStamina.gameObject);
         }
     }
 
@@ -164,7 +136,7 @@ public class LevelManagerBehaviour : MonoBehaviour
     {
         if (song.CachedTexture != null)
         {
-            CreateImageObject(song.CachedTexture, i);
+            CreateImageObject(song, i);
             yield break;
         }
 
@@ -173,29 +145,31 @@ public class LevelManagerBehaviour : MonoBehaviour
 
         yield return new WaitForSeconds(i * 0.1f);
 
-        FastAPIClient.Instance.GetProxyThumbnail(urlToProxy, (texture) => {
+        FastAPIClient.Instance.GetProxyThumbnail(urlToProxy, (texture) =>
+        {
             if (texture != null)
             {
                 song.CachedTexture = texture;
-                CreateImageObject(texture, i);
+                CreateImageObject(song, i);
             }
         });
     }
 
-    private void CreateImageObject(Texture2D tex, int i)
+    private void CreateImageObject(Song song, int i)
     {
-        
         MeshRenderer p = Instantiate(imagePrefab, positions[i].position + new Vector3(0, 1, 0), Quaternion.Euler(0, 270, 0));
-        p.material.mainTexture = tex;
-        if (p.TryGetComponent(out SceneLoaderBehaviour meinSkript)) 
+        p.material.mainTexture = song.CachedTexture;
+
+        if (p.TryGetComponent(out SceneLoaderBehaviour meinSkript))
         {
-            meinSkript.url = urls[i]; 
+            meinSkript.url = song.GetUrl();
+        }
+        if (p.TryGetComponent(out LoadSongSceneEffect loadSongSceneEffect))
+        {
+            loadSongSceneEffect.url = song.GetUrl();
         }
         images.Add(p.gameObject);
     }
-
-
-    
 
     async void Awake()
     {
@@ -214,85 +188,50 @@ public class LevelManagerBehaviour : MonoBehaviour
 
         await LoadSongs();
 
-        if(songs.Count >= 1)
-        {
-            shownSongs.Add(songs[0]);   
-        }
-        if(songs.Count >= 2)
-        {
-            shownSongs.Add(songs[1]);   
-        }
-        if(songs.Count >= 3)
-        {
-            shownSongs.Add(songs[2]);
-        }
-
-        Debug.Log("Shown songs " + shownSongs.Count);
-        Debug.Log("Songs " + songs.Count);
-        Debug.Log("Positions " + positions.Count);
+        // Initialize starting songs
+        if (songs.Count >= 1) shownSongs.Add(songs[0]);
+        if (songs.Count >= 2) shownSongs.Add(songs[1]);
+        if (songs.Count >= 3) shownSongs.Add(songs[2]);
 
         await Show();
-       
-        Debug.Log("Songs loaded: " + songs.Count);
-        
     }
 
     private async Task LoadSongs()
-{
-    foreach (var url in urls)
     {
-        var song = await LoadSongAsync(url);
-        songs.Add(song);
+        foreach (var url in urls)
+        {
+            var song = await LoadSongAsync(url);
+            if (song != null) songs.Add(song);
+        }
     }
-}
 
     private Task<Song> LoadSongAsync(string url)
-{
-    var tcs = new TaskCompletionSource<Song>();
- 
-    FastAPIClient.Instance.GetSongMetadataWithoutDownload(url, songData =>
     {
-        if (songData == null)
+        var tcs = new TaskCompletionSource<Song>();
+
+        FastAPIClient.Instance.GetSongMetadataWithoutDownload(url, songData =>
         {
-            tcs.SetException(new Exception("Failed to process song"));
-            return;
-        }
+            if (songData == null)
+            {
+                Debug.LogError("Failed to process song at: " + url);
+                tcs.SetResult(null); 
+                return;
+            }
 
-        
- 
-        var song = new Song(
-            songData.title,
-            songData.artist,
-            songData.thumbnail_url,
-            (float)songData.duration
-        );
-        Debug.Log("Song processed, check out the metadata: ");
-        Debug.Log(song.GetName());
-        Debug.Log(song.GetArtist());
-        Debug.Log(song.GetStamina());
+            var song = new Song(
+                songData.title,
+                songData.artist,
+                songData.thumbnail_url,
+                (float)songData.duration,
+                url 
+            );
 
- 
-        tcs.SetResult(song);
-    });
- 
-    return tcs.Task;
-}
-    private void OnEnable()
-    {
-        inputActions.Player.Enable();
-    }
-    private void OnDisable()
-    {
-        inputActions.Player.Disable();
-    }
-    void Start()
-    {
-        
-        
+            tcs.SetResult(song);
+        });
+
+        return tcs.Task;
     }
 
-    void Update()
-    {
-        
-    }
-}
+    private void OnEnable() => inputActions.Player.Enable();
+    private void OnDisable() => inputActions.Player.Disable();
+}   
