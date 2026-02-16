@@ -77,7 +77,7 @@ public class SongBehaviour : MonoBehaviour
     IEnumerator SendScoreToBackend()
     {
         GameStatData data = new GameStatData();
-        data.player_id = "PlayerOne"; 
+        data.player_id = UserIDCarrier.player_id; 
         data.score = score;
         data.level = waveCount; 
         data.time_played = Time.timeSinceLevelLoad; 

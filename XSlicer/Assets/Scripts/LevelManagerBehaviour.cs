@@ -12,226 +12,309 @@ public class BypassCertificate : CertificateHandler
     protected override bool ValidateCertificate(byte[] certificateData) => true;
 }
 
+[System.Serializable]
+public class SongDTO
+{
+    public int id;
+    public string url;
+}
+
+// 2. Logik-Klasse für das Spiel
+[System.Serializable]
 public class Song
 {
-    private string name;
-    private string artist;
-    private float length;
-    private string thumbnail_url;
-    private string source_url;
-
-    // For Caching
+    public string name;
+    public string artist;
+    public string url;
+    public string thumbnail_url;
+    public float length;
     public Texture2D CachedTexture;
-
-    public Song(string name, string artist, string thumbnail_url, float length, string source_url)
-    {
-        this.name = name;
-        this.artist = artist;
-        this.thumbnail_url = thumbnail_url;
-        this.length = length;
-        this.source_url = source_url;
-    }
 
     public string GetStamina()
     {
         if (length < 120) return "Short";
-        else if (length >= 120 && length < 240) return "Medium length";
-        else return "Long";
+        if (length >= 120 && length < 240) return "Medium";
+        return "Long";
     }
-
-    public string GetName() => name;
-    public string GetArtist() => artist;
-    public string GetThumbnailURl() => thumbnail_url;
-    public string GetUrl() => source_url; // Getter for the URL
 }
 
 public class LevelManagerBehaviour : MonoBehaviour
 {
     public static LevelManagerBehaviour Instance { get; private set; }
+
+    [Header("Settings")]
+    [SerializeField] private string apiBaseUrl = "http://127.0.0.1:8000";
+    [SerializeField] private List<Transform> positions = new List<Transform>();
+    [SerializeField] private TextMeshPro themePrefab;
+    [SerializeField] private MeshRenderer imagePrefab;
+
+    private List<string> songUrlsFromDB = new List<string>();
+    private List<Song> loadedSongs = new List<Song>();
+    private List<Song> shownSongs = new List<Song>();
+    
+    private List<GameObject> spawnedUI = new List<GameObject>();
     private InputSystem_Actions inputActions;
 
-    [SerializeField]
-    private List<string> urls = new List<string>();
-
-    private List<Song> songs = new List<Song>();
-    private List<GameObject> themes = new List<GameObject>();
-    private List<GameObject> images = new List<GameObject>();
-    private List<Song> shownSongs = new List<Song>();
-
-    [SerializeField]
-    private List<Transform> positions = new List<Transform>();
-
-    [SerializeField]
-    private TextMeshPro theme;
-    [SerializeField]
-    private MeshRenderer imagePrefab;
-
-    public LevelManagerBehaviour()
+    private void Awake()
     {
+        Debug.Log("[LevelManager] Awake gestartet"); // MUSS erscheinen
         Instance = this;
+        inputActions = new InputSystem_Actions();
+        
+        // Wir nutzen eine Coroutine als Starter, um asynchrone Hänger in Awake zu vermeiden
+        StartCoroutine(MainFlowRoutine());
     }
+    private IEnumerator MainFlowRoutine()
+{
+    Debug.Log("[LevelManager] Flow gestartet");
+    
+    // 1. Datenbank abfragen (Wir wandeln Task in Coroutine um)
+    Task dbTask = FetchSongsFromDatabase();
+    yield return new WaitUntil(() => dbTask.IsCompleted);
 
-    public void GetNext()
+    if (songUrlsFromDB.Count > 0)
     {
-        if (shownSongs.Count < 3) return;
-
-        shownSongs[0] = shownSongs[1];
-        shownSongs[1] = shownSongs[2];
-        int index = songs.IndexOf(shownSongs[2]);
-        if (songs.Count - 1 == index)
+        Debug.Log($"[LevelManager] {songUrlsFromDB.Count} URLs gefunden. Lade Metadaten...");
+        
+        // 2. Metadaten laden
+        Task metaTask = LoadAllSongMetadata();
+        yield return new WaitUntil(() => metaTask.IsCompleted);
+        
+        // 3. Anzeige vorbereiten
+        shownSongs.Clear();
+        for (int i = 0; i < Mathf.Min(3, loadedSongs.Count); i++)
         {
-            shownSongs[2] = songs[0];
+            shownSongs.Add(loadedSongs[i]);
+        }
+        
+        Debug.Log($"[LevelManager] Erstelle Anzeigen für {shownSongs.Count} Songs...");
+        Show();
+        
+        Debug.Log("[LevelManager] Setup abgeschlossen.");
+    }
+    else
+    {
+        Debug.LogWarning("[LevelManager] Keine Songs zum Laden gefunden.");
+    }
+}
+
+
+    private async void RunInitialization()
+{
+    try 
+    {
+        Debug.Log("[LevelManager] Starte DB-Abfrage...");
+        await FetchSongsFromDatabase();
+        
+        if (songUrlsFromDB == null || songUrlsFromDB.Count == 0)
+        {
+            Debug.LogWarning("[LevelManager] Keine URLs gefunden. Tabellen-Name in DB prüfen?");
+            return;
+        }
+
+        Debug.Log($"[LevelManager] {songUrlsFromDB.Count} URLs geladen. Lade Metadaten...");
+        await LoadAllSongMetadata();
+        
+        // Anzeige vorbereiten
+        shownSongs.Clear();
+        for (int i = 0; i < Mathf.Min(3, loadedSongs.Count); i++)
+        {
+            shownSongs.Add(loadedSongs[i]);
+        }
+        
+        Show();
+        Debug.Log("[LevelManager] Setup erfolgreich beendet.");
+    }
+    catch (Exception e)
+    {
+        Debug.LogError($"[LevelManager] Kritischer Fehler im Flow: {e.Message}\n{e.StackTrace}");
+    }
+}
+
+
+    private async Task FetchSongsFromDatabase()
+{
+    string fullUrl = $"{apiBaseUrl}/songs";
+    songUrlsFromDB.Clear();
+
+    Debug.Log($"[LevelManager] Starte Request an: {fullUrl}");
+
+    using (UnityWebRequest www = UnityWebRequest.Get(fullUrl))
+    {
+        // Das hier ist der sicherste Weg, asynchron in Unity auf einen WebRequest zu warten
+        var operation = www.SendWebRequest();
+
+        while (!operation.isDone)
+        {
+            await Task.Delay(100); // Kurze Pause, um den Thread nicht zu blockieren
+        }
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError($"[LevelManager] DB-Fehler: {www.error}");
+            return;
+        }
+
+        string responseText = www.downloadHandler.text;
+        Debug.Log($"[LevelManager] Antwort erhalten: {responseText}");
+
+        // WICHTIG: Prüfen ob JsonParser existiert
+        SongDTO[] dtos = JsonParser.FromJson<SongDTO>(responseText);
+        
+        if (dtos != null && dtos.Length > 0)
+        {
+            foreach (var dto in dtos)
+            {
+                if (!string.IsNullOrEmpty(dto.url))
+                {
+                    songUrlsFromDB.Add(dto.url);
+                    Debug.Log($"[LevelManager] URL geladen: {dto.url}");
+                }
+            }
         }
         else
         {
-            shownSongs[2] = songs[index + 1];
+            Debug.LogWarning("[LevelManager] Keine Songs im JSON gefunden oder Parser fehlgeschlagen.");
         }
     }
+}
 
-    public void GetPrevious()
+
+    private async Task LoadAllSongMetadata()
     {
-        if (shownSongs.Count < 3) return;
-
-        shownSongs[2] = shownSongs[1];
-        shownSongs[1] = shownSongs[0];
-        int index = songs.IndexOf(shownSongs[0]);
-        if (index == 0)
+        loadedSongs.Clear();
+        foreach (var url in songUrlsFromDB)
         {
-            shownSongs[0] = songs[songs.Count - 1];
-        }
-        else
-        {
-            shownSongs[0] = songs[index - 1];
+            var song = await LoadSingleSongAsync(url);
+            if (song != null) loadedSongs.Add(song);
         }
     }
 
-    async Task Show()
+    private Task<Song> LoadSingleSongAsync(string url)
     {
-        foreach (var obj in themes) if (obj != null) Destroy(obj);
-        themes.Clear();
-        foreach (var obj in images) if (obj != null) Destroy(obj);
-        images.Clear();
+        var tcs = new TaskCompletionSource<Song>();
 
-        for (int i = 0; i < shownSongs.Count; i++)
+        // Ruft Metadaten vom FastAPIClient ab (z.B. via yt-dlp auf dem Server)
+        FastAPIClient.Instance.GetSongMetadataWithoutDownload(url, songData =>
         {
-            // Start loading thumbnail and passing the specific song object
-            StartCoroutine(LoadThumbnail(shownSongs[i], i));
+            if (songData == null)
+            {
+                Debug.LogError($"Metadaten-Fehler für: {url}");
+                tcs.SetResult(null);
+                return;
+            }
 
-            // Create Text Info
-            var sName = Instantiate(theme, positions[i].position, Quaternion.Euler(0, 270, 0));
-            sName.text = "Name: " + shownSongs[i].GetName();
-            themes.Add(sName.gameObject);
+            Song newSong = new Song {
+                name = songData.title,
+                artist = songData.artist,
+                thumbnail_url = songData.thumbnail_url,
+                length = (float)songData.duration,
+                url = url
+            };
 
-            var sArtist = Instantiate(theme, positions[i].position - new Vector3(0, 0.2f, 0), Quaternion.Euler(0, 270, 0));
-            sArtist.text = "Artist: " + shownSongs[i].GetArtist();
-            themes.Add(sArtist.gameObject);
+            tcs.SetResult(newSong);
+        });
 
-            var sStamina = Instantiate(theme, positions[i].position - new Vector3(0, 0.4f, 0), Quaternion.Euler(0, 270, 0));
-            sStamina.text = "Dauer: " + shownSongs[i].GetStamina();
-            themes.Add(sStamina.gameObject);
-        }
+        return tcs.Task;
     }
 
-    public IEnumerator LoadThumbnail(Song song, int i)
+    void Show() // Nicht mehr async Task
+{
+    // Altes UI aufräumen
+    foreach (var obj in spawnedUI) if (obj != null) Destroy(obj);
+    spawnedUI.Clear();
+
+    if (shownSongs.Count == 0) {
+        Debug.LogWarning("[LevelManager] shownSongs ist leer!");
+        return;
+    }
+
+    for (int i = 0; i < shownSongs.Count; i++)
+    {
+        if (i >= positions.Count) break;
+
+        Song song = shownSongs[i];
+        Vector3 pos = positions[i].position;
+
+        // Thumbnail laden
+        StartCoroutine(LoadThumbnailRoutine(song, i));
+
+        // Texte instanziieren
+        CreateText(song.name, pos, 0f);
+        CreateText(song.artist, pos, 0.2f);
+        CreateText($"Dauer: {song.GetStamina()}", pos, 0.4f);
+        
+        Debug.Log($"[LevelManager] Anzeige für {song.name} an Position {i} erstellt.");
+    }
+}
+
+
+    private void CreateText(string content, Vector3 basePos, float yOffset)
+    {
+        var t = Instantiate(themePrefab, basePos - new Vector3(0, yOffset, 0), Quaternion.Euler(0, 270, 0));
+        t.text = content;
+        spawnedUI.Add(t.gameObject);
+    }
+
+    private IEnumerator LoadThumbnailRoutine(Song song, int index)
     {
         if (song.CachedTexture != null)
         {
-            CreateImageObject(song, i);
+            CreateImageObject(song, index);
             yield break;
         }
 
-        string urlToProxy = song.GetThumbnailURl();
-        if (string.IsNullOrEmpty(urlToProxy)) yield break;
+        if (string.IsNullOrEmpty(song.thumbnail_url)) yield break;
 
-        yield return new WaitForSeconds(i * 0.1f);
-
-        FastAPIClient.Instance.GetProxyThumbnail(urlToProxy, (texture) =>
+        FastAPIClient.Instance.GetProxyThumbnail(song.thumbnail_url, (tex) =>
         {
-            if (texture != null)
+            if (tex != null)
             {
-                song.CachedTexture = texture;
-                CreateImageObject(song, i);
+                song.CachedTexture = tex;
+                CreateImageObject(song, index);
             }
         });
     }
 
     private void CreateImageObject(Song song, int i)
     {
-        MeshRenderer p = Instantiate(imagePrefab, positions[i].position + new Vector3(0, 1, 0), Quaternion.Euler(0, 270, 0));
-        p.material.mainTexture = song.CachedTexture;
+        MeshRenderer mr = Instantiate(imagePrefab, positions[i].position + Vector3.up, Quaternion.Euler(0, 270, 0));
+        mr.material.mainTexture = song.CachedTexture;
+        
+        // URL an Scripte auf dem Prefab weitergeben
+        if (mr.TryGetComponent(out SceneLoaderBehaviour slb)) slb.url = song.url;
+        if (mr.TryGetComponent(out LoadSongSceneEffect lse)) lse.url = song.url;
 
-        if (p.TryGetComponent(out SceneLoaderBehaviour meinSkript))
-        {
-            meinSkript.url = song.GetUrl();
-        }
-        if (p.TryGetComponent(out LoadSongSceneEffect loadSongSceneEffect))
-        {
-            loadSongSceneEffect.url = song.GetUrl();
-        }
-        images.Add(p.gameObject);
+        spawnedUI.Add(mr.gameObject);
     }
 
-    async void Awake()
+    // --- Navigation ---
+    public void GetNext()
     {
-        inputActions = new InputSystem_Actions();
-
-        inputActions.Player.Next.performed += async ctx =>
-        {
-            GetNext();
-            await Show();
-        };
-        inputActions.Player.Previous.performed += async ctx =>
-        {
-            GetPrevious();
-            await Show();
-        };
-
-        await LoadSongs();
-
-        // Initialize starting songs
-        if (songs.Count >= 1) shownSongs.Add(songs[0]);
-        if (songs.Count >= 2) shownSongs.Add(songs[1]);
-        if (songs.Count >= 3) shownSongs.Add(songs[2]);
-
-        await Show();
+        if (loadedSongs.Count < 2) return;
+        // Einfache Rotation der Liste
+        Song first = loadedSongs[0];
+        loadedSongs.RemoveAt(0);
+        loadedSongs.Add(first);
+        UpdateShownSongs();
     }
 
-    private async Task LoadSongs()
+    public void GetPrevious()
     {
-        foreach (var url in urls)
-        {
-            var song = await LoadSongAsync(url);
-            if (song != null) songs.Add(song);
-        }
+        if (loadedSongs.Count < 2) return;
+        Song last = loadedSongs[loadedSongs.Count - 1];
+        loadedSongs.RemoveAt(loadedSongs.Count - 1);
+        loadedSongs.Insert(0, last);
+        UpdateShownSongs();
     }
 
-    private Task<Song> LoadSongAsync(string url)
+    private void UpdateShownSongs()
     {
-        var tcs = new TaskCompletionSource<Song>();
-
-        FastAPIClient.Instance.GetSongMetadataWithoutDownload(url, songData =>
-        {
-            if (songData == null)
-            {
-                Debug.LogError("Failed to process song at: " + url);
-                tcs.SetResult(null); 
-                return;
-            }
-
-            var song = new Song(
-                songData.title,
-                songData.artist,
-                songData.thumbnail_url,
-                (float)songData.duration,
-                url 
-            );
-
-            tcs.SetResult(song);
-        });
-
-        return tcs.Task;
+        shownSongs.Clear();
+        for (int i = 0; i < Mathf.Min(3, loadedSongs.Count); i++)
+            shownSongs.Add(loadedSongs[i]);
     }
 
-    private void OnEnable() => inputActions.Player.Enable();
-    private void OnDisable() => inputActions.Player.Disable();
-}   
+    private void OnEnable() => inputActions?.Player.Enable();
+    private void OnDisable() => inputActions?.Player.Disable();
+}
