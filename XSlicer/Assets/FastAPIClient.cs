@@ -50,6 +50,12 @@ public class FastAPIClient : MonoBehaviour
     }
     private IEnumerator GetSongMetadataWithoutDownloadCoroutine(string link, System.Action<SongData> onComplete)
     {
+        if (string.IsNullOrEmpty(link)) 
+        {
+            Debug.LogError("Abbruch: Link ist leer oder null!");
+            onComplete?.Invoke(null);
+            yield break; 
+        }
         string url = $"{baseUrl}/get_metadata?link={UnityWebRequest.EscapeURL(link)}";
         UnityWebRequest request = UnityWebRequest.Get(url);
 
