@@ -1350,7 +1350,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1859317482768818723, guid: 5eeb0ca04d8800340bc1e91550048bc0, type: 3}
       propertyPath: m_Name
-      value: login_cube (1)
+      value: register_cube
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: -7155269810760896042, guid: 5eeb0ca04d8800340bc1e91550048bc0, type: 3}
