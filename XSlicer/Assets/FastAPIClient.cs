@@ -187,6 +187,143 @@ public class FastAPIClient : MonoBehaviour
         }
     }
 
+    public IEnumerator PostStats(GameStatData data)
+    {
+        string url = $"{baseUrl}/stats";
+        string jsonPayload = JsonUtility.ToJson(data);
+        using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonPayload);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+            yield return www.SendWebRequest();
+            if (www.result != UnityWebRequest.Result.Success)
+                Debug.LogError($"PostStats error: {www.error}");
+            else
+                Debug.Log("Score posted successfully.");
+        }
+    }
+
+    public void GetUser(string userId, System.Action<UserData> onComplete)
+    {
+        StartCoroutine(GetUserCoroutine(userId, onComplete));
+    }
+
+    private IEnumerator GetUserCoroutine(string userId, System.Action<UserData> onComplete)
+    {
+        string url = $"{baseUrl}/users/{userId}";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"GetUser error: {request.error}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                UserData user = JsonUtility.FromJson<UserData>(request.downloadHandler.text);
+                onComplete?.Invoke(user);
+            }
+        }
+    }
+
+    public void GetShopSwords(System.Action<SwordData[]> onComplete)
+    {
+        StartCoroutine(GetShopSwordsCoroutine(onComplete));
+    }
+
+    private IEnumerator GetShopSwordsCoroutine(System.Action<SwordData[]> onComplete)
+    {
+        string url = $"{baseUrl}/swords";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"GetShopSwords error: {request.error}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                SwordData[] swords = JsonHelper.FromJsonArray<SwordData>(request.downloadHandler.text);
+                onComplete?.Invoke(swords);
+            }
+        }
+    }
+
+    public void BuySword(int userId, int swordId, System.Action<bool> onComplete)
+    {
+        StartCoroutine(BuySwordCoroutine(userId, swordId, onComplete));
+    }
+
+    private IEnumerator BuySwordCoroutine(int userId, int swordId, System.Action<bool> onComplete)
+    {
+        string url = $"{baseUrl}/users/buy_sword";
+        BuySwordRequest payload = new BuySwordRequest { user_id = userId, sword_id = swordId };
+        string json = JsonUtility.ToJson(payload);
+        using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(json);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+            yield return www.SendWebRequest();
+            bool success = www.result == UnityWebRequest.Result.Success;
+            if (!success) Debug.LogError($"BuySword error: {www.error}");
+            onComplete?.Invoke(success);
+        }
+    }
+
+    public void GetUserSwords(string userId, System.Action<SwordData[]> onComplete)
+    {
+        StartCoroutine(GetUserSwordsCoroutine(userId, onComplete));
+    }
+
+    private IEnumerator GetUserSwordsCoroutine(string userId, System.Action<SwordData[]> onComplete)
+    {
+        string url = $"{baseUrl}/user/{userId}/swords";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"GetUserSwords error: {request.error}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                SwordData[] swords = JsonHelper.FromJsonArray<SwordData>(request.downloadHandler.text);
+                onComplete?.Invoke(swords);
+            }
+        }
+    }
+
+    public void GetHighscores(System.Action<HighscoreData[]> onComplete)
+    {
+        StartCoroutine(GetHighscoresCoroutine(onComplete));
+    }
+
+    private IEnumerator GetHighscoresCoroutine(System.Action<HighscoreData[]> onComplete)
+    {
+        string url = $"{baseUrl}/highscores";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"GetHighscores error: {request.error}");
+                onComplete?.Invoke(null);
+            }
+            else
+            {
+                HighscoreData[] scores = JsonHelper.FromJsonArray<HighscoreData>(request.downloadHandler.text);
+                onComplete?.Invoke(scores);
+            }
+        }
+    }
+
 }
 
 [System.Serializable]
@@ -196,3 +333,6 @@ public class ProcessSongResponse
     public string metadata_path;
     public SongData metadata;
 }
+
+[System.Serializable]
+public class BuySwordRequest { public int user_id; public int sword_id; }

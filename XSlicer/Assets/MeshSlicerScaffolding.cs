@@ -112,7 +112,7 @@ public class MeshSlicerScaffolding : MonoBehaviour
             mc.convex = true;
 
             var rb = part.AddComponent<Rigidbody>();
-            rb.useGravity = false;
+            rb.useGravity = true;
             rb.AddForce(_normal * directionMultiplier * 2f, ForceMode.Impulse);
         }
 

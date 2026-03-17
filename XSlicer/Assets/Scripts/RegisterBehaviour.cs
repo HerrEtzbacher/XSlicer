@@ -13,11 +13,10 @@ public class RegisterBehaviour : MonoBehaviour, ISliceEffect
 
     public void OnSliced()
     {
-        
+        StartCoroutine(Register());
     }
     void Start()
     {
-        StartCoroutine(Register());
     }
 
     public IEnumerator Register()

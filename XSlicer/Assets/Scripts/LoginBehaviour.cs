@@ -10,6 +10,7 @@ public class UserData
     public int id;
     public string username;
     public string password;
+    public int credit;
 }
 
 [System.Serializable]
@@ -52,6 +53,7 @@ public class LoginBehaviour : MonoBehaviour, ISliceEffect
 
     public void OnSliced()
     {
+        isLoading = true;
         StartCoroutine(Loading());
         StartCoroutine(Login());
     }
@@ -82,6 +84,7 @@ public class LoginBehaviour : MonoBehaviour, ISliceEffect
             if (webRequest.result != UnityWebRequest.Result.Success)
             {
                 Debug.LogError("Netzwerkfehler: " + webRequest.error);
+                isLoading = false;
             }
             else
             {
@@ -91,6 +94,7 @@ public class LoginBehaviour : MonoBehaviour, ISliceEffect
                 if (string.IsNullOrEmpty(jsonResponse) || jsonResponse == "[]" || jsonResponse == "null")
                 {
                     Debug.LogWarning("Login fehlgeschlagen: Keine Daten gefunden.");
+                    isLoading = false;
                 }
                 else
                 {
@@ -102,11 +106,14 @@ public class LoginBehaviour : MonoBehaviour, ISliceEffect
                         Debug.Log($"ERFOLG! ID: {loggedInUser.id}, Name: {loggedInUser.username}");
                         UserIDCarrier.player_id = loggedInUser.id.ToString();
                         UserIDCarrier.username = loggedInUser.username;
+                        UserIDCarrier.credits = loggedInUser.credit;
+                        isLoading = false;
                         SceneManager.LoadScene("SongChoicesSinglePlayer");
                     }
                     else
                     {
                         Debug.LogError("Kein solcher User gefunden");
+                        isLoading = false;
                     }
                 }
             }
